@@ -47,8 +47,16 @@ Trader.prototype.retry = function(method, args) {
 }
 
 Trader.prototype.getPortfolio = function(callback) {
-  this.bitfinex.wallet_balances(function (err, data, body) {
-    var portfolio = _.map(body, function (asset) {
+  this.bitfinex.wallet_balances(function (err, data) {
+    var result = [];
+    for (var i = data.length - 1; i >= 0; i--) {
+      log.warn(data[i]);
+      result.push(data[i]);
+    };
+    // result = result.substring(0, result.length - 1) + "}";
+    // result = JSON.parse(result);
+    // log.warn("Portfolio balance:" + result);
+    var portfolio = _.map(result, function (asset) {
       return {
         name: asset.currency.toUpperCase(),
         // TODO: use .amount instead of .available?
@@ -60,9 +68,15 @@ Trader.prototype.getPortfolio = function(callback) {
 }
 
 Trader.prototype.getTicker = function(callback) {
-  this.bitfinex.ticker(defaultAsset, function (err, data, body) {
-    var tick = JSON.parse(body);
-    callback(err, { bid: +tick.bid, ask: +tick.ask })
+  this.bitfinex.ticker(defaultAsset, function (err, data) {
+    try {
+      // log.warn("We got this response from finex:");
+      // log.error(data);
+      var tick = JSON.parse(data);
+      callback(err, { bid: +tick.bid, ask: +tick.ask })
+    } catch (e) {
+      callback(e, {});
+    }
   });
 }
 
@@ -80,11 +94,11 @@ function submit_order(bfx, type, amount, price, callback) {
   bfx.new_order(defaultAsset, amount, price, exchangeName, 
     type, 
     'exchange limit', 
-    function (err, data, body) {
+    function (err, data) {
       if (err)
-        return log.error('unable to ' + type, err, body);
+        return log.error('unable to ' + type, err, data);
 
-      var order = JSON.parse(body);
+      var order = JSON.parse(data);
       callback(err, order.order_id);
     });
 }
@@ -99,15 +113,15 @@ Trader.prototype.sell = function(amount, price, callback) {
 }
 
 Trader.prototype.checkOrder = function(order_id, callback) {
-  this.bitfinex.order_status(order_id, function (err, data, body) {
-      var result = JSON.parse(body);
+  this.bitfinex.order_status(order_id, function (err, data) {
+      var result = JSON.parse(data);
       callback(err, result.is_live);    
   });
 }
 
 Trader.prototype.cancelOrder = function(order_id, callback) {
-  this.bitfinex.cancel_order(order_id, function (err, data, body) {
-      var result = JSON.parse(body);
+  this.bitfinex.cancel_order(order_id, function (err, data) {
+      var result = JSON.parse(data);
       if (err || !result || !result.is_cancelled)
         log.error('unable to cancel order', order, '(', err, result, ')');
   });
@@ -123,6 +137,8 @@ Trader.prototype.getTrades = function(since, callback, descending) {
   this.bitfinex.trades(defaultAsset, /* start, */ function (err, data) {
     if (err)
       return self.retry(self.getTrades, args);
+
+    // var result = JSON.parse(data);
 
     var trades = _.map(data, function (trade) {
       return {
