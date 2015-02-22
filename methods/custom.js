@@ -7,6 +7,8 @@
 // The example below is pretty stupid: on every new candle there is
 // a 10% chance it will recommand to change your position (to either
 // long or short).
+var _ = require('lodash');
+var log = require('../core/log.js');
 
 var config = require('../core/util.js').getConfig();
 var settings = config.custom;
@@ -29,7 +31,7 @@ method.update = function(candle) {
   this.randomNumber = Math.random();
 
   // There is a 10% chance it is smaller than 0.1
-  this.toUpdate = randomNumber < 0.1;
+  this.toUpdate = this.randomNumber < 0.5;
 }
 
 // For debugging purposes.
