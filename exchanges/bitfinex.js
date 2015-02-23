@@ -50,12 +50,10 @@ Trader.prototype.getPortfolio = function(callback) {
   this.bitfinex.wallet_balances(function (err, data) {
     var result = [];
     for (var i = data.length - 1; i >= 0; i--) {
-      log.warn(data[i]);
-      result.push(data[i]);
+      if (data[i].type == 'exchange') {
+        result.push(data[i]);
+      }
     };
-    // result = result.substring(0, result.length - 1) + "}";
-    // result = JSON.parse(result);
-    // log.warn("Portfolio balance:" + result);
     var portfolio = _.map(result, function (asset) {
       return {
         name: asset.currency.toUpperCase(),
@@ -68,11 +66,8 @@ Trader.prototype.getPortfolio = function(callback) {
 }
 
 Trader.prototype.getTicker = function(callback) {
-  this.bitfinex.ticker(defaultAsset, function (err, data) {
+  this.bitfinex.ticker(defaultAsset, function (err, tick) {
     try {
-      // log.warn("We got this response from finex:");
-      // log.error(data);
-      var tick = JSON.parse(data);
       callback(err, { bid: +tick.bid, ask: +tick.ask })
     } catch (e) {
       callback(e, {});
@@ -90,16 +85,15 @@ Trader.prototype.getFee = function(callback) {
 function submit_order(bfx, type, amount, price, callback) {
   // TODO: Bitstamp module included the following - is it necessary?
   // amount *= 0.995; // remove fees
-  amount = Math.floor(amount*100000000)/100000000;
+  amount = String(Math.floor(amount*100000000)/100000000);
+  price = String(price);
   bfx.new_order(defaultAsset, amount, price, exchangeName, 
     type, 
     'exchange limit', 
     function (err, data) {
       if (err)
         return log.error('unable to ' + type, err, data);
-
-      var order = JSON.parse(data);
-      callback(err, order.order_id);
+      callback(err, data.order_id);
     });
 }
 
@@ -114,16 +108,15 @@ Trader.prototype.sell = function(amount, price, callback) {
 
 Trader.prototype.checkOrder = function(order_id, callback) {
   this.bitfinex.order_status(order_id, function (err, data) {
-      var result = JSON.parse(data);
-      callback(err, result.is_live);    
+      // var result = JSON.parse(data);
+      callback(err, data.is_live);    
   });
 }
 
 Trader.prototype.cancelOrder = function(order_id, callback) {
   this.bitfinex.cancel_order(order_id, function (err, data) {
-      var result = JSON.parse(data);
-      if (err || !result || !result.is_cancelled)
-        log.error('unable to cancel order', order, '(', err, result, ')');
+      if (err || !data || !data.is_cancelled)
+        log.error('unable to cancel order', order_id, '(', err, data, ')');
   });
 }
 
