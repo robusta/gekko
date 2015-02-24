@@ -49,19 +49,24 @@ Trader.prototype.retry = function(method, args) {
 Trader.prototype.getPortfolio = function(callback) {
   this.bitfinex.wallet_balances(function (err, data) {
     var result = [];
-    for (var i = data.length - 1; i >= 0; i--) {
-      if (data[i].type == 'exchange') {
-        result.push(data[i]);
-      }
-    };
-    var portfolio = _.map(result, function (asset) {
-      return {
-        name: asset.currency.toUpperCase(),
-        // TODO: use .amount instead of .available?
-        amount: +asset.available
-      }
-    });
-    callback(err, portfolio);
+    if (err) {
+      return log.error('unable to get Portfolio', err, data);
+      callback(err, data);
+    } else {
+      for (var i = data.length - 1; i >= 0; i--) {
+        if (data[i].type == 'exchange') {
+          result.push(data[i]);
+        }
+      };
+      var portfolio = _.map(result, function (asset) {
+        return {
+          name: asset.currency.toUpperCase(),
+          // TODO: use .amount instead of .available?
+          amount: +asset.available
+        }
+      });
+      callback(err, portfolio);
+    }
   });
 }
 
